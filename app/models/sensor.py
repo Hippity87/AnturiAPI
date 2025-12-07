@@ -33,16 +33,19 @@ class Measurement(MeasurementBase, table=True):
 
 
 
-    class SensorCreate(SensorBase):
-        pass
+class SensorCreate(SensorBase):
+    pass
 
-    class SensorUpdate(SQLModel):
-        block: Optional[str] = None
-        status: Optional[str] = None
-    
-    class MeasurementCreate(MeasurementBase):
-        pass
+class SensorUpdate(SQLModel):
+    block: Optional[str] = None
+    status: Optional[str] = None
 
-    class MeasurementRead(MeasurementBase):
-        id: int
-        sensor_id: int
+class SensorRead(SensorBase):
+    id: int
+        
+class MeasurementCreate(MeasurementBase):
+    pass
+
+class MeasurementRead(MeasurementBase):
+    id: int
+    sensor_id: int

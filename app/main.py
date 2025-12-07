@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.core.database import init_db, get_session
+from app.routers import sensors, measurements
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,4 +21,6 @@ app = FastAPI(
 async def root():
     return {"message": "Sensor API is running!", "status": "OK"}
 
-#testataan database
+
+app.include_router(sensors.router)
+app.include_router(measurements.router)
