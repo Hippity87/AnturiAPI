@@ -30,3 +30,19 @@ class Measurement(MeasurementBase, table=True):
     
     # Relaatio: Linkki takaisin anturi-objektiin
     sensor: Optional[Sensor] = Relationship(back_populates="measurements")
+
+
+
+    class SensorCreate(SensorBase):
+        pass
+
+    class SensorUpdate(SQLModel):
+        block: Optional[str] = None
+        status: Optional[str] = None
+    
+    class MeasurementCreate(MeasurementBase):
+        pass
+
+    class MeasurementRead(MeasurementBase):
+        id: int
+        sensor_id: int
