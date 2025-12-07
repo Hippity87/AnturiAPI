@@ -11,7 +11,7 @@ class SensorBase(SQLModel):
 
 class MeasurementBase(SQLModel):
     temperature: float = Field(description="Lämpötila Celsius-asteina")
-    timestamp: datetime = Field(default_factory=datetime.now(timezone.utc), description="Mittauksen aikaleima")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Mittauksen aikaleima")
 
 
 
