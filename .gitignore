@@ -1,0 +1,26 @@
+# --- Pythonin omat väliaikaistiedostot ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtuaaliympäristöt (venv) ---
+venv/
+.venv/
+env/
+
+# --- Ympäristömuuttujat ja salaisuudet (TÄRKEÄ) ---
+.env
+
+# --- Tietokannat ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- IDE ja Editorit ---
+.vscode/
+.idea/
+
+# --- Distribuutio (jos joskus paketoit sovelluksen) ---
+dist/
+build/
+*.egg-info/
