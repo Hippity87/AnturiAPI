@@ -43,6 +43,8 @@ from pydantic import BaseModel
 class SensorDetailRead(SensorRead):
     measurements: List[MeasurementRead]
 
+# app/routers/sensors.py
+
 @router.get("/{sensor_id}", response_model=SensorDetailRead)
 async def read_sensor(
     sensor_id: int,
@@ -54,21 +56,32 @@ async def read_sensor(
     if not sensor:
         raise HTTPException(status_code=404, detail="Sensor not found")
 
-    # 2. Haetaan mittaukset (Suora kysely tässä, jotta saadaan limit/sort)
-    # Normaalisti siirtäisin tämän CRUDiin, jos logiikka monimutkaistuu.
+    # 2. Haetaan mittaukset manuaalisesti (jotta saadaan limit toimimaan)
+
     statement = (
         select(Measurement)
         .where(Measurement.sensor_id == sensor_id)
-        .order_by(desc(Measurement.timestamp)) # Uusimmat ensin
+        # 1. Ensisijaisesti ajan mukaan
+        # 2. Jos ajat ovat tasan, uusin ID ensin
+        .order_by(desc(Measurement.timestamp), desc(Measurement.id))
         .limit(limit)
     )
     result = await session.exec(statement)
     measurements = result.all()
 
-    # 3. Yhdistetään data palautusta varten
-    # Koska Sensor-modelissa on relaatio, voimme täyttää sen manuaalisesti
-    sensor.measurements = measurements 
-    return sensor
+    # --- KORJAUS ALKAA TÄSTÄ ---
+    
+    # ÄLÄ TEE NÄIN (Tämä aiheuttaa MissingGreenlet-virheen):
+    # sensor.measurements = measurements 
+    # return sensor
+
+    # TEE NÄIN:
+    # Luomme uuden SensorDetailRead-objektin yhdistämällä anturin tiedot ja mittaukset.
+    # **sensor.model_dump() purkaa anturin kentät (mac_id, block, jne.)
+    return SensorDetailRead(
+        **sensor.model_dump(), 
+        measurements=measurements
+    )
 
 # --- 4. PÄIVITÄ ANTURI (Status / Lohko) ---
 @router.patch("/{sensor_id}", response_model=SensorRead)
