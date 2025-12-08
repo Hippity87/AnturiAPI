@@ -15,7 +15,8 @@ app = FastAPI(
     title="Sensor API",
     version="1.0.0",
     description="API for Raspberry PI sensor data collection",
-    lifespan=lifespan)
+    lifespan=lifespan,
+    swagger_ui_parameters={"operationsSorter": "method"})
 
 @app.get("/")
 async def root():

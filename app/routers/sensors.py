@@ -11,7 +11,7 @@ from app.crud import measurement as measurement_crud
 
 router = APIRouter(prefix="/sensors", tags=["sensors"])
 
-# --- 1. LUO UUSI ANTURI ---
+# ---  LUO UUSI ANTURI ---
 @router.post("/", response_model=SensorRead, status_code=status.HTTP_201_CREATED)
 async def create_sensor(
     sensor_in: SensorCreate, 
@@ -26,7 +26,26 @@ async def create_sensor(
         )
     return await sensor_crud.create_sensor(session, sensor_in)
 
-# --- 2. HAE ANTURIT (Lohko / Status -suodatus) ---
+
+
+# ---  LÄHETÄ MITTAUSDATA (Anturi kutsuu tätä) ---
+@router.post("/{sensor_id}/measurements", response_model=MeasurementRead, status_code=status.HTTP_201_CREATED)
+async def create_measurement_for_sensor(
+    sensor_id: int,
+    measurement_in: MeasurementCreate,
+    session: AsyncSession = Depends(get_session)
+):
+    # Varmistetaan että anturi on olemassa
+    sensor = await sensor_crud.get_sensor_by_id(session, sensor_id)
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+        
+    # Luodaan mittaus
+    return await measurement_crud.create_measurement(session, measurement_in, sensor_id)
+
+
+
+# ---  HAE ANTURIT (Lohko / Status -suodatus) ---
 @router.get("/", response_model=List[SensorRead])
 async def read_sensors(
     block: Optional[str] = None,
@@ -35,7 +54,7 @@ async def read_sensors(
 ):
     return await sensor_crud.get_sensors(session, block=block, status=status)
 
-# --- 3. HAE YKSI ANTURI + MITTAUSHISTORIA ---
+# ---  HAE YKSI ANTURI + MITTAUSHISTORIA ---
 # Tämä toteuttaa vaatimuksen: "Näytä anturi ja oletuksena 10 uusinta mittausta"
 # Luomme lennosta yhdistelmä-mallin vastaukselle.
 from pydantic import BaseModel
@@ -90,7 +109,7 @@ async def read_sensor(
         measurements=measurements
     )
 
-# --- 4. PÄIVITÄ ANTURI (Status / Lohko) ---
+# ---  PÄIVITÄ ANTURI (Status / Lohko) ---
 @router.patch("/{sensor_id}", response_model=SensorRead)
 async def update_sensor(
     sensor_id: int,
@@ -103,24 +122,10 @@ async def update_sensor(
         
     return await sensor_crud.update_sensor(session, db_sensor, sensor_update)
 
-# --- 5. LÄHETÄ MITTAUSDATA (Anturi kutsuu tätä) ---
-@router.post("/{sensor_id}/measurements", response_model=MeasurementRead, status_code=status.HTTP_201_CREATED)
-async def create_measurement_for_sensor(
-    sensor_id: int,
-    measurement_in: MeasurementCreate,
-    session: AsyncSession = Depends(get_session)
-):
-    # Varmistetaan että anturi on olemassa
-    sensor = await sensor_crud.get_sensor_by_id(session, sensor_id)
-    if not sensor:
-        raise HTTPException(status_code=404, detail="Sensor not found")
-        
-    # Luodaan mittaus
-    return await measurement_crud.create_measurement(session, measurement_in, sensor_id)
 
 
 
-# --- 6. HAE ANTURIN HISTORIA  ---
+# ---  HAE ANTURIN HISTORIA  ---
 @router.get("/{sensor_id}/history", response_model=List[SensorEventRead])
 async def read_sensor_history(
     sensor_id: int,
@@ -133,7 +138,7 @@ async def read_sensor_history(
         
     return await sensor_crud.get_events(session, sensor_id=sensor_id)
 
-# --- 7. HAE GLOBAALI HISTORIA ---
+# ---  HAE GLOBAALI HISTORIA ---
 # Query-parametrilla ?status=ERROR saadaan lista graafia varten.
 @router.get("/events/all", response_model=List[SensorEventRead])
 async def read_all_events(

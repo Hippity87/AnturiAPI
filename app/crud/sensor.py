@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List, Optional
 from sqlmodel import select, desc
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -47,23 +48,31 @@ async def update_sensor(
 ) -> Sensor:
     
     # 1. Otetaan talteen vanha status vertailua varten
-    old_status = db_sensor.status
+    old_status = db_sensor.status.value if isinstance(db_sensor.status, Enum) else db_sensor.status
     
     # 2. Päivitetään anturin tiedot
     sensor_data = sensor_update.model_dump(exclude_unset=True)
     for key, value in sensor_data.items():
+        if isinstance(value, Enum):
+            value = value.value  # Tallenna enum-arvo tietokantaan
+
         setattr(db_sensor, key, value)
     
     session.add(db_sensor)
     
     # 3. LOKITUS: Jos status muuttui, luodaan tapahtuma
-    if sensor_update.status and sensor_update.status != old_status:
+    new_status = sensor_update.status
+    if isinstance(new_status, Enum):
+        new_status = new_status.value
+
+    if new_status and new_status != old_status:
         event = SensorEvent(
             sensor_id=db_sensor.id,
-            status=sensor_update.status,
-            description=f"Status changed from {old_status} to {sensor_update.status}"
+            status=new_status, # Tähän menee nyt varmasti string
+            description=f"Status changed from {old_status} to {new_status}"
         )
         session.add(event)
+    
         
     # 4. Tallennetaan kaikki kerralla (Transaktio)
     await session.commit()
