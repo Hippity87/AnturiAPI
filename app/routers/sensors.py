@@ -48,7 +48,9 @@ class SensorDetailRead(SensorRead):
 @router.get("/{sensor_id}", response_model=SensorDetailRead)
 async def read_sensor(
     sensor_id: int,
-    limit: int = Query(10, description="Montako mittausta haetaan"),
+    limit: int = Query(10, description="Montako mittausta haetaan (jos aikaväliä ei annettu)"),
+    start_time: Optional[datetime] = Query(None, description="Hae mittaukset tästä ajankohdasta eteenpäin"),
+    end_time: Optional[datetime] = Query(None, description="Hae mittaukset tähän ajankohtaan asti"),
     session: AsyncSession = Depends(get_session)
 ):
     # 1. Haetaan anturi
@@ -56,28 +58,33 @@ async def read_sensor(
     if not sensor:
         raise HTTPException(status_code=404, detail="Sensor not found")
 
-    # 2. Haetaan mittaukset manuaalisesti (jotta saadaan limit toimimaan)
-
+    # 2. Rakennetaan mittausten kysely dynaamisesti
     statement = (
         select(Measurement)
         .where(Measurement.sensor_id == sensor_id)
-        # 1. Ensisijaisesti ajan mukaan
-        # 2. Jos ajat ovat tasan, uusin ID ensin
-        .order_by(desc(Measurement.timestamp), desc(Measurement.id))
-        .limit(limit)
+        .order_by(desc(Measurement.timestamp), desc(Measurement.id)) # Uusimmat ensin + tie-breaker
     )
+    
+    # --- AIKASUODATUS ---
+    if start_time:
+        statement = statement.where(Measurement.timestamp >= start_time)
+    
+    if end_time:
+        statement = statement.where(Measurement.timestamp <= end_time)
+        
+    # Sovelletaan limit vain jos aikaväliä EI ole määritelty tiukaksi
+    # (Tai voimme päättää, että limit on aina voimassa. Yleensä aikavälihaussa halutaan kaikki data.)
+    if not start_time and not end_time:
+        statement = statement.limit(limit)
+    
+    # Jos käyttäjä antoi aikavälin, emme ehkä halua katkaista listaa 10 kappaleeseen,
+    # mutta turvallisuuden vuoksi voisi olla joku maksimi (esim 1000). 
+    # Tässä esimerkissä poistamme limitin kokonaan jos aikaväli on käytössä.
+    
     result = await session.exec(statement)
     measurements = result.all()
 
-    # --- KORJAUS ALKAA TÄSTÄ ---
-    
-    # ÄLÄ TEE NÄIN (Tämä aiheuttaa MissingGreenlet-virheen):
-    # sensor.measurements = measurements 
-    # return sensor
-
-    # TEE NÄIN:
-    # Luomme uuden SensorDetailRead-objektin yhdistämällä anturin tiedot ja mittaukset.
-    # **sensor.model_dump() purkaa anturin kentät (mac_id, block, jne.)
+    # 3. Palautetaan yhdistelmäobjekti
     return SensorDetailRead(
         **sensor.model_dump(), 
         measurements=measurements
