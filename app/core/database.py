@@ -3,6 +3,8 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from typing import AsyncGenerator
+from app.models.sensor import Sensor, Measurement, SensorEvent
+
 
 DATABASE_URL = "sqlite+aiosqlite:///./sensor_database.db"
 

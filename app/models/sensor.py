@@ -49,3 +49,23 @@ class MeasurementCreate(MeasurementBase):
 class MeasurementRead(MeasurementBase):
     id: int
     sensor_id: int
+
+
+# --- EVENT LOG MODEL ---
+
+class SensorEventBase(SQLModel):
+    status: str = Field(description="Tila johon siirryttiin (esim. ERROR)")
+    description: Optional[str] = Field(default=None, description="Lisätieto tapahtumasta")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SensorEvent(SensorEventBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    sensor_id: int = Field(foreign_key="sensor.id")
+    
+    # Valinnainen: Relaatio takaisin anturiin
+    sensor: Optional[Sensor] = Relationship()
+
+# Schema lukemista varten
+class SensorEventRead(SensorEventBase):
+    id: int
+    sensor_id: int
