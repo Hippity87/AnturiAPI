@@ -5,7 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, desc
 
 from app.core.database import get_session
-from app.models.sensor import Sensor, SensorCreate, SensorRead, SensorUpdate, Measurement, MeasurementCreate, MeasurementRead
+from app.models.sensor import Sensor, SensorCreate, SensorRead, SensorUpdate, Measurement, MeasurementCreate, MeasurementRead, SensorEventRead
 from app.crud import sensor as sensor_crud
 from app.crud import measurement as measurement_crud
 
@@ -110,3 +110,27 @@ async def create_measurement_for_sensor(
         
     # Luodaan mittaus
     return await measurement_crud.create_measurement(session, measurement_in, sensor_id)
+
+
+
+# --- 6. HAE ANTURIN HISTORIA  ---
+@router.get("/{sensor_id}/history", response_model=List[SensorEventRead])
+async def read_sensor_history(
+    sensor_id: int,
+    session: AsyncSession = Depends(get_session)
+):
+    # Varmistetaan ensin, että anturi on olemassa
+    sensor = await sensor_crud.get_sensor_by_id(session, sensor_id)
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+        
+    return await sensor_crud.get_events(session, sensor_id=sensor_id)
+
+# --- 7. HAE GLOBAALI HISTORIA ---
+# Query-parametrilla ?status=ERROR saadaan lista graafia varten.
+@router.get("/events/all", response_model=List[SensorEventRead])
+async def read_all_events(
+    status: Optional[str] = None,
+    session: AsyncSession = Depends(get_session)
+):
+    return await sensor_crud.get_events(session, status=status)

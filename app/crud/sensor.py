@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlmodel import select
+from sqlmodel import select, desc
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.models.sensor import Sensor, SensorCreate, SensorUpdate, SensorEvent
 
@@ -69,3 +69,27 @@ async def update_sensor(
     await session.commit()
     await session.refresh(db_sensor)
     return db_sensor
+
+
+# 6. HAE TAPAHTUMALOKI
+
+async def get_events(
+    session: AsyncSession, 
+    sensor_id: Optional[int] = None, 
+    status: Optional[str] = None
+) -> List[SensorEvent]:
+    statement = select(SensorEvent)
+    
+    # Filtteri 1: Jos halutaan tietyn anturin historia
+    if sensor_id:
+        statement = statement.where(SensorEvent.sensor_id == sensor_id)
+        
+    # Filtteri 2: Jos halutaan esim. vain virhetilanteet (graafia varten)
+    if status:
+        statement = statement.where(SensorEvent.status == status)
+        
+    # Järjestys: Uusin tapahtuma ensin
+    statement = statement.order_by(desc(SensorEvent.timestamp))
+    
+    result = await session.exec(statement)
+    return result.all()
