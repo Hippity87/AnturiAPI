@@ -18,13 +18,10 @@ async def get_sensor_by_mac(session: AsyncSession, mac_id: str) -> Optional[Sens
 # 3. HAE KAIKKI (Tukee suodatusta lohkon ja statuksen mukaan)
 async def get_sensors(
     session: AsyncSession, 
-    block: Optional[str] = None, 
     status: Optional[str] = None
 ) -> List[Sensor]:
     statement = select(Sensor)
     
-    if block:
-        statement = statement.where(Sensor.block == block)
     if status:
         statement = statement.where(Sensor.status == status)
         

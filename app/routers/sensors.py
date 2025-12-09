@@ -48,11 +48,10 @@ async def create_measurement_for_sensor(
 # ---  HAE ANTURIT (Lohko / Status -suodatus) ---
 @router.get("/", response_model=List[SensorRead])
 async def read_sensors(
-    block: Optional[str] = None,
     status: Optional[str] = None,
     session: AsyncSession = Depends(get_session)
 ):
-    return await sensor_crud.get_sensors(session, block=block, status=status)
+    return await sensor_crud.get_sensors(session, status=status)
 
 # ---  HAE YKSI ANTURI + MITTAUSHISTORIA ---
 # Tämä toteuttaa vaatimuksen: "Näytä anturi ja oletuksena 10 uusinta mittausta"
