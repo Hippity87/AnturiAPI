@@ -164,6 +164,7 @@ async def get_sensors_by_block_with_stats(
     response_data = []
     for sensor, measurement in result.all():
         response_data.append({
+            "id": sensor.id,
             "mac_id": sensor.mac_id,
             "status": sensor.status,
             "last_temperature": measurement.temperature if measurement else None,
