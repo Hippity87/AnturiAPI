@@ -1,8 +1,9 @@
 from enum import Enum
 from typing import List, Optional
-from sqlmodel import select, desc
+from sqlmodel import select, desc, func, and_
 from sqlmodel.ext.asyncio.session import AsyncSession
-from app.models.sensor import Sensor, SensorCreate, SensorUpdate, SensorEvent
+from app.models.sensor import Sensor, SensorCreate, SensorUpdate, SensorEvent, Measurement
+
 
 # 1. HAE YKSI (ID:n perusteella)
 async def get_sensor_by_id(session: AsyncSession, sensor_id: int) -> Optional[Sensor]:
@@ -30,13 +31,31 @@ async def get_sensors(
     result = await session.exec(statement)
     return result.all()
 
-# 4. LUO UUSI ANTURI
+# 4. LUO UUSI ANTURI + ALKUTAPAHTUMA
 async def create_sensor(session: AsyncSession, sensor_in: SensorCreate) -> Sensor:
-    # Muutetaan Pydantic-malli tietokantamalliksi
+    # 1. Luodaan anturi-objekti
     db_sensor = Sensor.model_validate(sensor_in)
     session.add(db_sensor)
+    
+    # 2. Ajetaan flush(), jotta saamme db_sensor.id:n käyttöön heti 
+    # (mutta ei vielä commitoida transaktiota)
+    await session.flush()
+
+    # 3. Luodaan ensimmäinen historiatieto
+    # Varmistetaan, että tallennamme status-arvon stringinä, jos se on Enum
+    initial_status = sensor_in.status.value if hasattr(sensor_in.status, "value") else sensor_in.status
+
+    event = SensorEvent(
+        sensor_id=db_sensor.id,
+        status=initial_status,
+        description="Sensor created"
+    )
+    session.add(event)
+
+    # 4. Tallennetaan molemmat kantaan (Commit)
     await session.commit()
     await session.refresh(db_sensor)
+    
     return db_sensor
 
 # 5. PÄIVITÄ ANTURI (vaihda status ERROR -> NORMAL)
@@ -102,3 +121,53 @@ async def get_events(
     
     result = await session.exec(statement)
     return result.all()
+
+
+# 7. HAE LOHKON ANTURIT + VIIMEISIN DATA
+async def get_sensors_by_block_with_stats(
+    session: AsyncSession, 
+    block: str
+) -> List[dict]:
+    """
+    Hakee tietyn lohkon anturit ja liittää mukaan uusimman mittauksen tiedot.
+    Toteutetaan ns. "Greatest-N-per-group" -kysely.
+    """
+    
+    # 1. Alikysely: Etsi uusin aikaleima jokaiselle anturille
+    subq = (
+        select(
+            Measurement.sensor_id, 
+            func.max(Measurement.timestamp).label("max_ts")
+        )
+        .group_by(Measurement.sensor_id)
+        .subquery()
+    )
+
+    # 2. Pääkysely: Anturi + Mittaus (joka matchaa uusimpaan aikaleimaan)
+    # Käytämme outerjoinia, jotta saamme anturin listalle vaikka sillä ei olisi yhtään mittausta.
+    statement = (
+        select(Sensor, Measurement)
+        .where(Sensor.block == block)
+        .outerjoin(subq, Sensor.id == subq.c.sensor_id)
+        .outerjoin(
+            Measurement, 
+            and_(
+                Measurement.sensor_id == Sensor.id, 
+                Measurement.timestamp == subq.c.max_ts
+            )
+        )
+    )
+
+    result = await session.exec(statement)
+    
+    # 3. Muotoillaan vastaus haluttuun muotoon
+    response_data = []
+    for sensor, measurement in result.all():
+        response_data.append({
+            "mac_id": sensor.mac_id,
+            "status": sensor.status,
+            "last_temperature": measurement.temperature if measurement else None,
+            "last_timestamp": measurement.timestamp if measurement else None
+        })
+        
+    return response_data

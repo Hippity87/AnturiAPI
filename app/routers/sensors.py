@@ -5,7 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, desc
 
 from app.core.database import get_session
-from app.models.sensor import Sensor, SensorCreate, SensorRead, SensorUpdate, Measurement, MeasurementCreate, MeasurementRead, SensorEventRead
+from app.models.sensor import Sensor, SensorCreate, SensorRead, SensorUpdate, Measurement, MeasurementCreate, MeasurementRead, SensorEventRead, SensorBlockRead
 from app.crud import sensor as sensor_crud
 from app.crud import measurement as measurement_crud
 
@@ -62,7 +62,6 @@ from pydantic import BaseModel
 class SensorDetailRead(SensorRead):
     measurements: List[MeasurementRead]
 
-# app/routers/sensors.py
 
 @router.get("/{sensor_id}", response_model=SensorDetailRead)
 async def read_sensor(
@@ -146,3 +145,18 @@ async def read_all_events(
     session: AsyncSession = Depends(get_session)
 ):
     return await sensor_crud.get_events(session, status=status)
+
+
+
+# ---  HAE LOHKON ANTURIT (Spec: mac, status, last_temp, last_time) ---
+@router.get("/block/{block_name}", response_model=List[SensorBlockRead])
+async def read_sensors_by_block(
+    block_name: str,
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Listaa tietyn lohkon anturit ja niiden viimeisimmän mittaustuloksen.
+    Ei palauta anturin ID:tä tai lohkon nimeä vastauksessa.
+    """
+    sensors_data = await sensor_crud.get_sensors_by_block_with_stats(session, block=block_name)
+    return sensors_data

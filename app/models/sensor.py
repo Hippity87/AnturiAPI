@@ -133,3 +133,12 @@ class SensorEvent(SensorEventBase, table=True):
 class SensorEventRead(SensorEventBase):
     id: int
     sensor_id: int
+
+# ... (lisää muiden Read-mallien joukkoon)
+
+class SensorBlockRead(SQLModel):
+    mac_id: str
+    status: SensorStatus
+    last_temperature: Optional[float] = Field(default=None, description="Viimeisin mitattu lämpötila")
+    last_timestamp: Optional[datetime] = Field(default=None, description="Viimeisin mittaushetki")
+
