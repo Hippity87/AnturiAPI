@@ -10,21 +10,25 @@ REST API tehdasympäristön lämpötila-antureiden hallintaan ja datan keräämi
 
 ## Asennus ja käynnistys
 
-1. **Luo virtuaaliympäristö:**
+1. **Projektin alustus**
+    git clone https://github.com/Hippity87/AnturiAPI.git
+    cd AnturiAPI
+
+2. **Luo virtuaaliympäristö:**
     python -m venv venv
 
-2. **Aktivoi virtuaaliympäristö**
+3. **Aktivoi virtuaaliympäristö**
     win: .\venv\Scripts\activate
     linux: source venv/bin/activate
 
-3. **Asenna riippuvuudet**
+4. **Asenna riippuvuudet**
     pip install -r requirements.txt
 
-4. **Käynnistä Palvelin**
+5. **Käynnistä Palvelin**
     uvicorn app.main:app
     # TAI dev
     fastapi dev app/main.py
 
-5. **Dokumentaatio**
+6. **Dokumentaatio**
     https://127.0.0.1:8000/docs
 
